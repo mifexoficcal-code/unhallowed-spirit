@@ -1,0 +1,474 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Воздух Кыргызстана</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Unbounded:wght@500;600&display=swap" rel="stylesheet">
+
+<!--
+  ЧАСТЬ 1. ВНЕШНИЙ ВИД (CSS)
+  Здесь описано, как выглядит страница: цвета, шрифты, отступы.
+  Все цвета собраны в начале, в блоке :root. Хотите другой цвет — меняйте только там.
+-->
+<style>
+  :root {
+    /* цвета интерфейса (светлая тема) */
+    --bg: #eceff2;
+    --surface: #ffffff;
+    --fg: #14202b;
+    --muted: #55646f;
+    --line: #d3dae0;
+    --accent: #1c5d8a;
+    --accent-fg: #ffffff;
+
+    /* цвета категорий смога: 0 = чисто, 5 = опасно */
+    --c0: #1e9a68;
+    --c1: #d6a000;
+    --c2: #e9761a;
+    --c3: #d4322d;
+    --c4: #8b3fb1;
+    --c5: #7b1f3f;
+
+    --display: "Unbounded", "Arial Black", system-ui, sans-serif;
+    --body: "Golos Text", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0e161d; --surface: #16212b; --fg: #e7edf2; --muted: #92a2af; --line: #293744;
+      --accent: #74b7e8; --accent-fg: #0e161d;
+      --c0: #3ccf93; --c1: #f2c94c; --c2: #f59a4a; --c3: #ef5d57; --c4: #b77bda; --c5: #dc5f89;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0e161d; --surface: #16212b; --fg: #e7edf2; --muted: #92a2af; --line: #293744;
+    --accent: #74b7e8; --accent-fg: #0e161d;
+    --c0: #3ccf93; --c1: #f2c94c; --c2: #f59a4a; --c3: #ef5d57; --c4: #b77bda; --c5: #dc5f89;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 400 16px/1.5 var(--body);
+    padding-block: max(20px, env(safe-area-inset-top, 0px)) max(32px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 720px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+  .wrap > * { min-width: 0; }
+
+  .eyebrow {
+    margin: 0;
+    font: 500 12px/1.2 var(--mono);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  h1 {
+    margin: 6px 0 14px;
+    font: 600 clamp(28px, 7vw, 40px)/1.1 var(--display);
+    text-wrap: balance;
+  }
+
+  /* кнопки городов */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    appearance: none;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--fg);
+    font: 500 14px/1 var(--body);
+    padding: 10px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+  .chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+  .chip:focus-visible, .refresh:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  /* главная карточка с индексом */
+  .hero {
+    --cat: var(--c0);
+    background: var(--surface);
+    background: color-mix(in srgb, var(--cat) 11%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--cat) 35%, var(--line));
+    border-radius: 20px;
+    padding: 22px 20px 24px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .label { margin: 0; font: 500 12px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .aqi {
+    margin: 0;
+    font: 600 clamp(72px, 22vw, 128px)/.95 var(--display);
+    letter-spacing: -.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .cat { display: flex; align-items: center; gap: 10px; font: 600 clamp(20px, 5vw, 26px)/1.2 var(--display); }
+  .dot { flex: none; width: 14px; height: 14px; border-radius: 50%; background: var(--cat); }
+
+  .scale-box { padding-bottom: 22px; }
+  .scale {
+    position: relative; height: 14px; border-radius: 7px; margin-top: 14px;
+    background: linear-gradient(to right,
+      var(--c0) 0 14.2857%, var(--c1) 14.2857% 28.5714%, var(--c2) 28.5714% 42.857%,
+      var(--c3) 42.857% 57.1428%, var(--c4) 57.1428% 85.714%, var(--c5) 85.714% 100%);
+  }
+  .marker {
+    position: absolute; top: -7px; left: calc(var(--pos, 0) * 1%);
+    width: 5px; height: 28px; border-radius: 3px; transform: translateX(-50%);
+    background: var(--fg); box-shadow: 0 0 0 3px var(--surface);
+  }
+  .tick { position: absolute; top: 20px; transform: translateX(-50%); font: 400 11px/1 var(--mono); color: var(--muted); }
+  .tick:first-of-type { transform: none; }
+
+  .advice { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; }
+  .advice li { display: grid; grid-template-columns: 74px 1fr; gap: 12px; align-items: baseline; }
+  .advice b { font: 500 12px/1.4 var(--mono); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+
+  /* PM2.5 и PM10 */
+  .pm { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+  .card .val { margin: 0; font: 600 30px/1.1 var(--display); font-variant-numeric: tabular-nums; }
+  .card .val small { font: 400 13px/1 var(--mono); color: var(--muted); letter-spacing: 0; }
+  .card .norm { margin: 0; font-weight: 600; }
+  .card .hint { margin: 0; color: var(--muted); font-size: 14px; }
+
+  /* прогноз на 24 часа */
+  .forecast { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+  .forecast h2 { margin: 0; font: 600 18px/1.2 var(--display); }
+  .bars { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; align-items: end; height: 130px; }
+  .bar { border-radius: 3px 3px 0 0; min-height: 6px; background: var(--c0); }
+  .bar.now { outline: 2px solid var(--fg); outline-offset: 1px; }
+  .hours { display: grid; grid-template-columns: repeat(24, 1fr); gap: 3px; font: 400 11px/1 var(--mono); color: var(--muted); }
+  .hours span { white-space: nowrap; }
+  .summary { margin: 0; color: var(--muted); font-size: 15px; }
+  .summary b { color: var(--fg); font-weight: 600; }
+
+  /* статус внизу */
+  .status { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: center; justify-content: space-between; font-size: 14px; color: var(--muted); }
+  .status .note { flex: 1 1 260px; margin: 0; }
+  .refresh {
+    appearance: none; border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+    font: 500 14px/1 var(--body); padding: 10px 14px; border-radius: 10px; cursor: pointer;
+  }
+  .badge { display: inline-block; font: 500 11px/1 var(--mono); letter-spacing: .06em; padding: 5px 8px; border-radius: 6px; background: var(--line); color: var(--fg); text-transform: uppercase; }
+  .badge.live { background: color-mix(in srgb, var(--c0) 25%, var(--surface)); }
+  .badge.demo { background: color-mix(in srgb, var(--c1) 30%, var(--surface)); }
+
+  @media (max-width: 420px) {
+    .advice li { grid-template-columns: 1fr; gap: 2px; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .marker { transition: left .5s ease; }
+    .bar { transition: height .4s ease; }
+  }
+</style>
+</head>
+
+<!--
+  ЧАСТЬ 2. СОДЕРЖИМОЕ (HTML)
+  Это «скелет» страницы: заголовок, кнопки, карточки. Пустые места (id="...")
+  потом заполняет программа из части 3.
+-->
+<body>
+<main class="wrap">
+
+  <header>
+    <p class="eyebrow">Качество воздуха · Кыргызстан</p>
+    <h1 id="cityName">Бишкек</h1>
+    <div class="chips" id="chips" role="group" aria-label="Выбор города"></div>
+  </header>
+
+  <section class="hero" id="hero" aria-live="polite">
+    <p class="label">Индекс качества воздуха (US AQI)</p>
+    <p class="aqi" id="aqi">—</p>
+    <div class="cat"><span class="dot"></span><span id="catName">Загружаю данные…</span></div>
+
+    <div class="scale-box">
+      <div class="scale" id="scale" role="img" aria-label="Шкала от 0 до 350">
+        <div class="marker" id="marker"></div>
+        <span class="tick" style="left:0%">0</span>
+        <span class="tick" style="left:14.2857%">50</span>
+        <span class="tick" style="left:28.5714%">100</span>
+        <span class="tick" style="left:42.857%">150</span>
+        <span class="tick" style="left:57.1428%">200</span>
+        <span class="tick" style="left:85.714%">300</span>
+      </div>
+    </div>
+
+    <ul class="advice">
+      <li><b>На улице</b><span id="advOut"></span></li>
+      <li><b>Дома</b><span id="advHome"></span></li>
+      <li><b>Маска</b><span id="advMask"></span></li>
+    </ul>
+  </section>
+
+  <section class="pm" aria-label="Частицы в воздухе">
+    <article class="card">
+      <p class="label">PM2.5</p>
+      <p class="val"><span id="pm25">—</span> <small>мкг/м³</small></p>
+      <p class="norm" id="pm25norm"></p>
+      <p class="hint">Мелкая пыль и сажа от печей, котельных и машин. Частицы настолько малы, что попадают глубоко в лёгкие.</p>
+    </article>
+    <article class="card">
+      <p class="label">PM10</p>
+      <p class="val"><span id="pm10">—</span> <small>мкг/м³</small></p>
+      <p class="norm" id="pm10norm"></p>
+      <p class="hint">Более крупная пыль: дорожная, строительная, поднятая ветром.</p>
+    </article>
+  </section>
+
+  <section class="forecast">
+    <h2>Ближайшие 24 часа</h2>
+    <div class="bars" id="bars"></div>
+    <div class="hours" id="hours"></div>
+    <p class="summary" id="summary"></p>
+  </section>
+
+  <footer class="status">
+    <p class="note" id="note"></p>
+    <button class="refresh" id="refresh" type="button">Обновить</button>
+  </footer>
+
+</main>
+
+<!--
+  ЧАСТЬ 3. ПОВЕДЕНИЕ (JavaScript)
+  Программа делает четыре шага:
+    1) берёт координаты выбранного города;
+    2) просит у сервиса Open-Meteo данные о воздухе;
+    3) определяет категорию по числу AQI;
+    4) показывает всё на странице.
+  Если интернета нет или сервис не отвечает, страница показывает пример и честно об этом пишет.
+-->
+<script>
+// ---------- Города: название и координаты ----------
+const CITIES = [
+  { name: "Бишкек",       lat: 42.8746, lon: 74.5698 },
+  { name: "Ош",           lat: 40.5283, lon: 72.7985 },
+  { name: "Джалал-Абад",  lat: 40.9333, lon: 72.9833 },
+  { name: "Каракол",      lat: 42.4907, lon: 78.3936 },
+  { name: "Нарын",        lat: 41.4287, lon: 75.9911 },
+  { name: "Токмок",       lat: 42.8420, lon: 75.3010 }
+];
+
+// ---------- Категории смога и советы ----------
+const CATS = [
+  { name: "Хорошо",
+    out: "Гулять и заниматься спортом на улице можно.",
+    home: "Проветривайте комнату как обычно.",
+    mask: "Не нужна." },
+  { name: "Умеренно",
+    out: "Большинству людей воздух подходит. Тем, кто тяжело реагирует на пыль, лучше сократить долгие нагрузки на улице.",
+    home: "Проветривать можно, лучше недолго.",
+    mask: "Не нужна." },
+  { name: "Вредно для чувствительных групп",
+    out: "Детям, пожилым людям и тем, у кого астма или болезни сердца, лучше меньше бывать на улице и не бегать.",
+    home: "Проветривайте коротко, когда воздух чище.",
+    mask: "По желанию, лучше FFP2 или N95." },
+  { name: "Вредно",
+    out: "Сократите время на улице. Тренировки на воздухе лучше перенести в помещение.",
+    home: "Окна держите закрытыми, проветривайте редко и недолго.",
+    mask: "На улице нужна FFP2 или N95. Тканевая маска почти не защищает." },
+  { name: "Очень вредно",
+    out: "Лучше оставаться дома. Детям и пожилым людям на улицу не выходить.",
+    home: "Окна закрыты. Если есть очиститель воздуха, включите его.",
+    mask: "На улице только FFP2 или N95." },
+  { name: "Опасно",
+    out: "На улицу выходить только по необходимости.",
+    home: "Окна закрыты, очиститель воздуха включён. При кашле или одышке обратитесь к врачу.",
+    mask: "FFP2 или N95 обязательна." }
+];
+
+// Суточные нормы ВОЗ (2021), мкг/м³
+const WHO = { pm25: 15, pm10: 45 };
+
+// --- pure:start ---  (простые функции без обращения к странице, их легко проверять)
+function categoryIndex(aqi) {
+  if (aqi <= 50)  return 0;
+  if (aqi <= 100) return 1;
+  if (aqi <= 150) return 2;
+  if (aqi <= 200) return 3;
+  if (aqi <= 300) return 4;
+  return 5;
+}
+function scalePosition(aqi) {           // положение маркера на шкале, в процентах
+  return Math.min(Math.max(aqi, 0), 350) / 350 * 100;
+}
+function fmt(n) {
+  return n.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
+}
+function normText(value, norm) {
+  const ratio = Math.round(value / norm * 10) / 10;       // одна цифра после запятой
+  if (ratio <= 1) return "В пределах нормы ВОЗ";
+  let word = "раза";                                       // 1,5 раза; 2 раза; 3,2 раза
+  if (Number.isInteger(ratio)) {
+    const last = ratio % 10, tail = ratio % 100;
+    word = (last >= 2 && last <= 4 && !(tail >= 12 && tail <= 14)) ? "раза" : "раз";   // 5 раз; 11 раз
+  }
+  return "В " + fmt(ratio) + " " + word + " выше нормы ВОЗ";
+}
+// --- pure:end ---
+
+const $ = (id) => document.getElementById(id);
+let currentCity = CITIES[0];
+
+// ---------- Запрос данных ----------
+async function fetchAir(lat, lon) {
+  const url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+    + "?latitude=" + lat + "&longitude=" + lon
+    + "&current=us_aqi,pm2_5,pm10"
+    + "&hourly=us_aqi"
+    + "&forecast_days=2&timezone=auto";
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);   // ждём не дольше 10 секунд
+  try {
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const json = await res.json();
+    if (!json.current || json.current.us_aqi == null) throw new Error("нет данных");
+    return json;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Пример на случай, когда связи нет. Числа выдуманные, на странице это помечено.
+function sampleData() {
+  const pad = (n) => String(n).padStart(2, "0");
+  const now = new Date(); now.setMinutes(0, 0, 0);
+  const time = [], us_aqi = [];
+  for (let i = 0; i < 48; i++) {
+    const d = new Date(now.getTime() + i * 3600e3);
+    time.push(d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()) + "T" + pad(d.getHours()) + ":00");
+    us_aqi.push(Math.round(135 + 45 * Math.sin((d.getHours() - 15) / 24 * 2 * Math.PI)));
+  }
+  return { current: { time: time[0], us_aqi: us_aqi[0], pm2_5: 62.4, pm10: 88.1 }, hourly: { time, us_aqi } };
+}
+
+// ---------- Показ на странице ----------
+function render(json, isLive) {
+  const cur = json.current;
+  const aqi = Math.round(cur.us_aqi);
+  const idx = categoryIndex(aqi);
+  const cat = CATS[idx];
+
+  $("hero").style.setProperty("--cat", "var(--c" + idx + ")");
+  $("aqi").textContent = aqi;
+  $("catName").textContent = cat.name;
+  $("marker").style.setProperty("--pos", scalePosition(aqi));
+  $("advOut").textContent = cat.out;
+  $("advHome").textContent = cat.home;
+  $("advMask").textContent = cat.mask;
+
+  $("pm25").textContent = cur.pm2_5 == null ? "—" : fmt(cur.pm2_5);
+  $("pm10").textContent = cur.pm10 == null ? "—" : fmt(cur.pm10);
+  $("pm25norm").textContent = cur.pm2_5 == null ? "" : normText(cur.pm2_5, WHO.pm25);
+  $("pm10norm").textContent = cur.pm10 == null ? "" : normText(cur.pm10, WHO.pm10);
+
+  renderForecast(json);
+
+  const when = cur.time.slice(11, 16);
+  $("note").innerHTML = "";
+  const badge = document.createElement("span");
+  badge.className = "badge " + (isLive ? "live" : "demo");
+  badge.textContent = isLive ? "Данные" : "Пример";
+  $("note").append(badge, " " + (isLive
+    ? "Обновлено в " + when + " по местному времени. Источник: Open-Meteo, это расчётная модель, а не датчик на вашей улице."
+    : "Нет связи с сервисом, поэтому показаны выдуманные числа для примера. Нажмите «Обновить», когда появится интернет."));
+}
+
+function renderForecast(json) {
+  const times = json.hourly.time, vals = json.hourly.us_aqi;
+  const nowHour = json.current.time.slice(0, 13);           // например 2026-10-30T20
+  let start = times.findIndex((t) => t.slice(0, 13) >= nowHour);
+  if (start < 0) start = 0;
+  const slice = [];
+  for (let i = start; i < Math.min(start + 24, times.length); i++) {
+    if (vals[i] != null) slice.push({ hour: times[i].slice(11, 16), aqi: Math.round(vals[i]) });
+  }
+
+  const bars = $("bars"), hours = $("hours");
+  bars.replaceChildren(); hours.replaceChildren();
+  slice.forEach((p, i) => {
+    const bar = document.createElement("div");
+    bar.className = "bar" + (i === 0 ? " now" : "");
+    bar.style.height = Math.max(4, Math.min(p.aqi, 300) / 300 * 100) + "%";
+    bar.style.background = "var(--c" + categoryIndex(p.aqi) + ")";
+    bar.title = p.hour + " · AQI " + p.aqi;
+    bar.setAttribute("role", "img");
+    bar.setAttribute("aria-label", p.hour + ", индекс " + p.aqi + ", " + CATS[categoryIndex(p.aqi)].name);
+    bars.append(bar);
+    const lab = document.createElement("span");
+    lab.textContent = i % 6 === 0 ? (i === 0 ? "сейчас" : p.hour) : "";
+    hours.append(lab);
+  });
+
+  if (!slice.length) { $("summary").textContent = ""; return; }
+  const worst = slice.reduce((a, b) => (b.aqi > a.aqi ? b : a));
+  const best = slice.reduce((a, b) => (b.aqi < a.aqi ? b : a));
+  const sum = $("summary");
+  sum.replaceChildren(
+    "Самый грязный воздух ожидается в ", bold(worst.hour), " (AQI " + worst.aqi + "). Лучшее время для прогулки: ", bold(best.hour), " (AQI " + best.aqi + ")."
+  );
+}
+function bold(text) { const b = document.createElement("b"); b.textContent = text; return b; }
+
+// ---------- Выбор города ----------
+function buildChips() {
+  const box = $("chips");
+  CITIES.forEach((c) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "chip"; b.textContent = c.name;
+    b.addEventListener("click", () => selectCity(c));
+    box.append(b);
+  });
+  if ("geolocation" in navigator) {
+    const g = document.createElement("button");
+    g.type = "button"; g.className = "chip"; g.textContent = "Рядом со мной"; g.dataset.geo = "1";
+    g.addEventListener("click", () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => selectCity({ name: "Рядом с вами", lat: pos.coords.latitude, lon: pos.coords.longitude }, true),
+        () => { $("note").textContent = "Не удалось определить местоположение. Разрешите доступ к геопозиции в настройках браузера."; },
+        { timeout: 8000 }
+      );
+    });
+    box.append(g);
+  }
+}
+function markChips() {
+  [...$("chips").children].forEach((b) => {
+    const active = b.dataset.geo ? currentCity.geo : (!currentCity.geo && b.textContent === currentCity.name);
+    b.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+}
+
+async function selectCity(city, geo) {
+  currentCity = Object.assign({}, city, { geo: !!geo });
+  try { if (!geo) localStorage.setItem("smog-city", city.name); } catch (e) {}
+  $("cityName").textContent = city.name;
+  markChips();
+  $("catName").textContent = "Загружаю данные…";
+  try {
+    render(await fetchAir(city.lat, city.lon), true);
+  } catch (err) {
+    render(sampleData(), false);
+  }
+}
+
+// ---------- Старт ----------
+buildChips();
+let first = CITIES[0];
+try { first = CITIES.find((c) => c.name === localStorage.getItem("smog-city")) || CITIES[0]; } catch (e) {}
+selectCity(first);
+$("refresh").addEventListener("click", () => selectCity(currentCity, currentCity.geo));
+</script>
+</body>
+</html>
